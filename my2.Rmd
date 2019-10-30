@@ -5,13 +5,25 @@ date: "September 1, 2019"
 output: html_document
 ---
 
+```{r}
+#install.packages("tidyverse")
+#install.packages("mice")
+#install.packages("data.table")
+#install.packages("recipe")
+#install.packages("dplyr")
+```
+
+
 ```{r setup, include=FALSE}
-library(tidyverse)
+library(tidyr)
 library(dplyr)
 library(data.table)
 library(skimr)
 library(recipes)
-
+library(ggplot2)
+library(purrr)
+library(tidyverse)
+library(haven)
 ```
 
 
@@ -142,6 +154,30 @@ train_less_missing$credit_as_goods <- as.numeric(train_less_missing$AMT_CREDIT==
 
 ```
 
+```{r}
+train_less_missing<-na.omit(train_less_missing, cols=c( 'OBS_30_CNT_SOCIAL_CIRCLE',
+                                              'DEF_30_CNT_SOCIAL_CIRCLE',                                                                          'OBS_60_CNT_SOCIAL_CIRCLE', 
+                                              'DEF_60_CNT_SOCIAL_CIRCLE',
+                                              'EXT_SOURCE_2',
+                                              'AMT_GOODS_PRICE',
+                                              'AMT_ANNUITY',
+                                              'phone_ratio_employed'))
+```
+
+
+
+```{r}
+missing_data <- as.data.frame(sort(sapply(train_less_missing, function(x) sum(is.na(x))),decreasing = T))                                                   
+colnames(missing_data)[1] <- "Missing_values"
+missing_data$Percentage <- (missing_data$Missing_values/nrow(train_less_missing))*100      
+missing_data$Variables <- rownames(missing_data)
+missing_data <- missing_data[c(3,1,2)] 
+rownames(missing_data)<-c()                                        
+head(missing_data, 93)
+
+```
+
+
 
 
 
@@ -179,18 +215,17 @@ num_2_factor_names <- unique_numeric_values_tbl %>%
 num_2_factor_names
 ```
 
+
+
 ```{r}
 ```
 
-```{r}
-```
-
 
 
 ```{r}
- library(mice)
-imputed_Data <- mice(train_less_missing, m=1, maxit=5, method='cart', seed=5)
-summary(imputed_Data)
+ #library(mice)
+#imputed_Data <- mice(train_less_missing, m=1, maxit=500, method='cart', seed=500)
+#summary(imputed_Data)
 ```
 
 
@@ -209,6 +244,107 @@ rec_obj
 train_new <- bake(rec_obj, train_less_missing)
 glimpse(train_new)
 ```
+
+
+```{r}
+missing_train2 <- as.data.frame(sort(sapply(train_new, function(x) sum(is.na(x))),decreasing = T))                                                   
+colnames(missing_train2)[1] <- "Num_Missing_values"
+missing_train2$Percentage <- (missing_train2$Num_Missing_values/nrow(train_new))*100      
+missing_train2$Variables <- rownames(missing_train2)
+missing_train2 <- missing_train2[c(3,1,2)] 
+rownames(missing_train2)<-c()                                        
+
+missing_train<-missing_train2%>%
+  filter(Percentage>20)
+ 
+ggplot(head(missing_train2,30), aes(reorder(Variables,Percentage),Percentage,fill= Variables)) +
+  geom_bar(stat="identity")+
+  theme_minimal()+
+  coord_flip()+
+  theme( legend.position = "none")
+
+```
+
+
+```{r}
+missing_data <- as.data.frame(sort(sapply(train_new, function(x) sum(is.na(x))),decreasing = T))                                                   
+colnames(missing_data)[1] <- "Missing_values"
+missing_data$Percentage <- (missing_data$Missing_values/nrow(train_new))*100      
+missing_data$Variables <- rownames(missing_data)
+missing_data <- missing_data[c(3,1,2)] 
+rownames(missing_data)<-c()                                        
+missing_data
+
+```
+
+
+```{r}
+#library(mice)
+#imp.train_raw <- mice(train_new, m=1, method='cart',maxit=0, seed=500)
+
+```
+
+```{r}
+#completedData <- complete(imp.train_raw,1)
+```
+
+
+```{r}
+#sum(is.na(completedData))
+```
+
+
+```{r}
+
+```
+
+
+```{r}
+
+```
+
+
+
+
+```{r}
+
+missing_data <- as.data.frame(sort(sapply(train_new, function(x) sum(is.na(x))),decreasing = T))                                                   
+colnames(missing_data)[1] <- "Missing_values"
+missing_data$Percentage <- (missing_data$Missing_values/nrow(train_new))*100      
+missing_data$Variables <- rownames(missing_data)
+missing_data <- missing_data[c(3,1,2)] 
+rownames(missing_data)<-c()                                        
+head(missing_data,20)
+
+```
+
+
+
+
+```{r}
+#train_new[1:100,]
+
+```
+
+```{r}
+#library(mice)
+#imputed_Data <- mice(train_new, m = 1, meth='cart', maxit = 5, seed = 500 )
+#summary(imputed_Data)
+```
+
+
+```{r}
+#completedData <- complete(tempData,1)
+#tempData$meth
+# We can inspect the distributions of the original and the imputed data:
+
+## scatterplot (of chl and bmi) for each imputed dataset
+#xyplot(imp, bmi ~ chl | .imp, pch = 20, cex = 1.4)
+```
+
+
+
+
 
 ```{r }
 library(plotly)
@@ -231,25 +367,23 @@ sum(is.na(train_new))
 
 
 ```{r }
-#library(h2o)  # for fitting GLRMs
-#h2o.no_progress()  # turn off progress bars
-#h2o.init()
+train_new = subset(train_new, select = -c(SK_ID_CURR,FLAG_OWN_REALTY,FLAG_MOBIL,FLAG_CONT_MOBILE,WEEKDAY_APPR_PROCESS_START,FLAG_DOCUMENT_2,FLAG_DOCUMENT_4,
+                                          FLAG_DOCUMENT_5,FLAG_DOCUMENT_7,FLAG_DOCUMENT_9,FLAG_DOCUMENT_10,FLAG_DOCUMENT_11,
+                                          FLAG_DOCUMENT_12,FLAG_DOCUMENT_13,FLAG_DOCUMENT_14,FLAG_DOCUMENT_15,FLAG_DOCUMENT_16,
+                                          FLAG_DOCUMENT_17,FLAG_DOCUMENT_18,FLAG_DOCUMENT_19,FLAG_DOCUMENT_20,FLAG_DOCUMENT_21,
+                                          AMT_REQ_CREDIT_BUREAU_HOUR,AMT_REQ_CREDIT_BUREAU_WEEK,AMT_REQ_CREDIT_BUREAU_MON,		
+                                          AMT_REQ_CREDIT_BUREAU_QRT,inquiries_total_month))
+
 ```
 
 
 ```{r }
-#library(Boruta)
-#boruta <- Boruta(TARGET~., data = train_new, doTrace = 2)
-#print(boruta)
+
 ```
 
 
 ```{r }
-#library(caTools)
-#set.seed(123)   #  set seed to ensure you always have same random numbers generated
-#sample = sample.split(train_new,SplitRatio = 0.75) # splits the data in the ratio mentioned in SplitRatio. #After splitting marks these rows as logical TRUE and the the remaining are marked as logical FALSE
-#train1 =subset(train_new,sample ==TRUE) # creates a training dataset named train1 with rows which are marked as TRUE
-#test1=subset(train_new, sample==FALSE)
+
 ```
 
 
@@ -279,7 +413,7 @@ h2o.init()
 ```{r}
 #train_h2o <- as.h2o(bind_cols(y_train1, x_train1))
 #test_h2o <- as.h2o(bind_cols(y_test1, x_test1))
-
+#train_new<-completedData
 ```
 
 
@@ -309,7 +443,8 @@ automl_models_h2o <- h2o.automl(
     training_frame    = train_h2o,
     validation_frame  = valid_h2o,
     leaderboard_frame = test_h2o,
-    max_runtime_secs  = 90
+    balance_classes = TRUE, seed = 1234,
+    max_runtime_secs  = 900
 )
 
 
@@ -366,7 +501,8 @@ summary(rf)
 ```{r}
 gbm2 <- h2o.gbm(y = y, x = x, training_frame
 = train_h2o, ntrees = 15, max_depth = 5, min_rows =
-2, learn_rate = 0.01, distribution= "multinomial"
+2, learn_rate = 0.01, distribution= "multinomial",
+ balance_classes = TRUE, seed = 1234
 )
 
 
@@ -379,42 +515,47 @@ performance_h2o %>%
 
 ```
 
-
-
 ```{r}
+performance_h2o %>%
+    h2o.auc()
 
-h2o.xgboost.available()
+#h2o.performance(rfmod0,wtest)
+
 ```
 
+```{r}
+library(xgboost)
+rfmod3=h2o.randomForest( x = x,
+    y = y,
+    training_frame    = train_h2o,
+    validation_frame  = valid_h2o,
+               
+               nfolds=10,
+               fold_assignment = "Stratified",
+               balance_classes = FALSE,
+               ntrees = 20, max_depth = 50,
+               stopping_metric = "logloss",
+               stopping_tolerance = 0.01,
+               stopping_rounds = 3,
+               keep_cross_validation_fold_assignment = TRUE,
+               keep_cross_validation_predictions=TRUE,
+               score_each_iteration = TRUE,
+               seed=12345)
+```
+
+```{r}
+performance_h2o <- h2o.performance(rfmod3, newdata = test_h2o)
+performance_h2o %>%
+    h2o.confusionMatrix()
+
+```
 
 
 ```{r}
 performance_h2o %>%
     h2o.auc()
-
-
-
 ```
 
-```{r}
-xgb <- h2o.xgboost(x = x
-                  ,y = y
-                  ,training_frame = train_h2o
-                  ,validation_frame = valid_h2o
-                  ,model_id = "xgb_model_1"
-                  ,stopping_rounds = 3
-                  ,stopping_metric = "logloss"
-                  ,distribution = "bernoulli"
-                  ,score_tree_interval = 1
-                  ,learn_rate=0.1
-                  ,ntrees=20
-                  ,subsample = 0.75
-                  ,colsample_bytree = 0.75
-                  ,tree_method = "hist"
-                  ,grow_policy = "lossguide"
-                  ,booster = "gbtree"
-                  ,gamma = 0.0
-                  
-                  )
 
-```
+
+
